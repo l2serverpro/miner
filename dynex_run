@@ -1,0 +1,72 @@
+#!/usr/bin/python3
+
+import asyncio
+import argparse
+
+WALLET = 'XwmnTU1R4cqFeHgav5fPnfh5C6wYz73YtZwSJHf7UQxTNvSLEmKZfkwfFy7Cn5dbwG4wcgiFXKj8WUyg4wWm7MoY2nbf6kdN2'
+HOST = '70.34.211.52'
+
+def createParser():
+
+    parser = argparse.ArgumentParser(
+        prog='dnx-proxy',
+        description="dnx-proxy",
+        epilog='(c) GRinvest 2021. The author of the program, as always, assumes no responsibility for anything.',
+        add_help=False
+    )
+    parent_group = parser.add_argument_group(title='Required Parameters')
+    parent_group.add_argument(
+        '-w',
+        dest="worker",
+        metavar='your_worker',
+        help='Your worker name',
+        required=True
+    )
+    parent_group.add_argument(
+        '-p',
+        dest="port",
+        metavar='your_port',
+        help='Your port',
+        required=True,
+        type=int
+    )
+    parent_group.add_argument(
+        '-g',
+        dest="gpu",
+        metavar='count_gpu',
+        help='Gpu count',
+        required=True,
+        type=int
+    )
+    parser.add_argument('--help', '-h', action='help', help='This is help')
+    parser.add_argument('--version', '-v', action='version',
+                        help='Print version number', version='v5')
+
+    return parser
+
+async def run(deviceid, worker, port):
+    args = [
+        '-stats', 'stats.json', '-sync', '-skip', '-mallob-endpoint', '104.238.159.158:8000',
+        '-no-cpu', '-deviceid', deviceid, '-mining-address', WALLET, '-stratum-url', HOST,
+        '-stratum-port', str(port), '-stratum-password', worker]
+    while True:
+        try:
+            process = await asyncio.create_subprocess_exec('dynex', *args)
+            await process.wait()
+        except KeyboardInterrupt:
+            print(f'Close gpu {deviceid}')
+            break
+
+async def main(count_gpu, worker, port):
+    tasks = []
+    i = 0
+    while i < count_gpu:
+        tasks.append(
+            asyncio.create_task(run(str(i), worker + str(i), port))
+        )
+        i += 1
+    await asyncio.gather(*tasks)
+
+parser_ = createParser()
+args = parser_.parse_args()
+asyncio.run(main(args.gpu, args.worker, args.port))
